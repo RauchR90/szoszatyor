@@ -1,0 +1,13 @@
+{
+  "name": "szoszatyor",
+  "version": "0.1Alpha",
+  "description": "Akadálymentes többjátékos szókirakó játék",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

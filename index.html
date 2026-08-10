@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>szószatyor</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.5; }
+    .hidden { display: none !important; }
+    #chat-box { border: 1px solid #ccc; height: 150px; overflow-y: auto; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
+    .status-panel { background: #eef6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #b6d4fe; }
+    .category-tag { font-size: 1.1rem; font-weight: bold; color: #555; text-transform: uppercase; margin-bottom: 5px; }
+    .scrambled-word { font-size: 2rem; letter-spacing: 5px; font-weight: bold; color: #0d6efd; margin: 10px 0; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+    .alert-msg { font-weight: bold; color: #d9534f; margin-top: 10px; }
+    .volume-control { margin: 15px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    .championship-panel { background: #fff3cd; border: 1px solid #ffe8a1; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    .info-box { background: #f8f9fa; border-left: 4px solid #0d6efd; padding: 15px; margin-bottom: 25px; font-size: 0.95rem; }
+    .leave-btn { background-color: #d9534f; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 30px; }
+    .leave-btn:hover { background-color: #c9302c; }
+    button { padding: 8px 12px; margin: 3px; cursor: pointer; font-size: 0.95rem; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <!-- INDÍTÓKÉPERNYŐ FEJLÉC -->
+  <header id="main-header">
+    <p><strong>szószatyor</strong></p>
+    <h1>Verzió: 0.2Beta</h1>
+  </header>
+
+  <main>
+    <div id="sr-announcements" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- 1. BELÉPÉSI ŰRLAP ÉS INFORMÁCIÓK -->
+    <section id="login-section">
+      
+      <div class="info-box">
+        <p>A játék ezen verziója jelenleg tesztfázisban, úgynevezett beta állapotban van, így előfordulhatnak hibák, anomáliák a használat közben, ezekért előre is elnézést kérek. Az építő jellegű javaslatokat vagy a hibabejelentéseket szívesen várom az alábbi e-mail címre: <strong>gephazcsapat@gmail.com</strong></p>
+        
+        <h3>Billentyűparancsok a játékban:</h3>
+        <ul>
+          <li><strong>Alt + Q</strong>: Kilépés a szobából</li>
+          <li><strong>Alt + S</strong>: Az aktuális feladvány betűinek és kategóriájának bemondatása a képernyőolvasóval</li>
+          <li><strong>Alt + P</strong>: Az aktuális pontállás lekérdezése és felolvasása</li>
+        </ul>
+      </div>
+
+      <h2>Csatlakozás a játékhoz</h2>
+      <form id="login-form">
+        <div>
+          <label for="username">Játékos neve:</label><br>
+          <input type="text" id="username" required autocomplete="off">
+        </div>
+        <br>
+        <div>
+          <label for="room">Szoba neve:</label><br>
+          <input type="text" id="room" autocomplete="off" placeholder="pl. baratok">
+        </div>
+        <br>
+        <button type="submit" id="join-btn">Belépés a szobába</button>
+        <button type="button" id="join-public-btn">Belépés a publikus szobába</button>
+      </form>
+
+    </section>
+
+    <!-- 2. JÁTÉKSZOBA TERÜLET -->
+    <section id="room-section" class="hidden">
+      <h2 id="room-title">Szoba</h2>
+
+      <!-- HANGERŐ BEÁLLÍTÁS -->
+      <section aria-labelledby="volume-heading" class="volume-control">
+        <h3 id="volume-heading" style="margin-top: 0;">Hangerő</h3>
+        <p>Jelenlegi hangerő: <strong id="volume-display">100%</strong></p>
+        <button type="button" id="vol-down-btn">Hangerő csökkentése (-10%)</button>
+        <button type="button" id="vol-up-btn">Hangerő növelése (+10%)</button>
+      </section>
+      
+      <!-- FELADVÁNY TERÜLET -->
+      <div class="status-panel">
+        <h3>Aktuális feladvány</h3>
+        <p>Időből hátravan: <strong id="timer-display">120</strong> másodperc</p>
+        
+        <div id="category-display" class="category-tag">Kategória: -</div>
+        <div id="scrambled-word-display" class="scrambled-word">Várakozás az indításra...</div>
+        
+        <form id="guess-form" class="hidden">
+          <label for="guess-input">Tippeld meg a szót:</label><br>
+          <input type="text" id="guess-input" autocomplete="off" required>
+          <button type="submit">Tipp beküldése</button>
+        </form>
+        <p id="guess-feedback" class="alert-msg"></p>
+      </div>
+
+      <!-- VEZÉRLŐ GOMBOK -->
+      <div id="game-controls">
+        <button id="start-game-btn">Új feladvány</button>
+
+        <div id="championship-controls" class="championship-panel hidden">
+          <h3>Bajnokság indítása</h3>
+          <button type="button" class="champ-btn" data-target="50">50 pontos bajnokság</button>
+          <button type="button" class="champ-btn" data-target="100">100 pontos bajnokság</button>
+          <button type="button" class="champ-btn" data-target="150">150 pontos bajnokság</button>
+        </div>
+      </div>
+
+      <!-- JÁTÉKOSLISTA ELEMEK -->
+      <div id="players-container">
+        <h3>Csatlakozott játékosok</h3>
+        <ul id="player-list"></ul>
+      </div>
+
+      <hr style="margin: 30px 0;">
+
+      <h3>Szoba csevegő</h3>
+      <div id="chat-box" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+      <form id="chat-form">
+        <label for="chat-input" class="sr-only">Üzenet írása</label>
+        <input type="text" id="chat-input" placeholder="Írj egy üzenetet..." required autocomplete="off">
+        <button type="submit">Küldés</button>
+      </form>
+
+      <button type="button" id="leave-room-btn" class="leave-btn">Kilépés a szobából (Alt+Q)</button>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const mainHeader = document.getElementById('main-header');
+    const loginSection = document.getElementById('login-section');
+    const roomSection = document.getElementById('room-section');
+    const loginForm = document.getElementById('login-form');
+    const usernameInput = document.getElementById('username');
+    const roomInput = document.getElementById('room');
+    const roomTitle = document.getElementById('room-title');
+    const joinPublicBtn = document.getElementById('join-public-btn');
+
+    const gameControls = document.getElementById('game-controls');
+    const playersContainer = document.getElementById('players-container');
+    const playerList = document.getElementById('player-list');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const championshipControls = document.getElementById('championship-controls');
+    const champBtns = document.querySelectorAll('.champ-btn');
+
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatBox = document.getElementById('chat-box');
+    const srAnnouncements = document.getElementById('sr-announcements');
+    const leaveRoomBtn = document.getElementById('leave-room-btn');
+
+    const categoryDisplay = document.getElementById('category-display');
+    const scrambledWordDisplay = document.getElementById('scrambled-word-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const guessForm = document.getElementById('guess-form');
+    const guessInput = document.getElementById('guess-input');
+    const guessFeedback = document.getElementById('guess-feedback');
+
+    const volumeDisplay = document.getElementById('volume-display');
+    const volDownBtn = document.getElementById('vol-down-btn');
+    const volUpBtn = document.getElementById('vol-up-btn');
+
+    let globalVolume = 1.0;
+    let currentMusic = null;
+    let currentPlayersData = {};
+    let currentCategoryText = '';
+    let currentScrambledText = '';
+    let isChampionshipMode = false;
+
+    function playSound(src, loop = false) {
+      const audio = new Audio(src);
+      audio.volume = globalVolume;
+      audio.loop = loop;
+      audio.play().catch(e => console.log('Hang hiba:', e));
+      return audio;
+    }
+
+    function stopCurrentMusic() {
+      if (currentMusic) {
+        currentMusic.pause();
+        currentMusic.currentTime = 0;
+        currentMusic = null;
+      }
+    }
+
+    volDownBtn.addEventListener('click', () => {
+      if (globalVolume > 0) {
+        globalVolume = Math.max(0, Math.round((globalVolume - 0.1) * 10) / 10);
+        updateVolumeUI();
+      }
+    });
+
+    volUpBtn.addEventListener('click', () => {
+      if (globalVolume < 1) {
+        globalVolume = Math.min(1, Math.round((globalVolume + 0.1) * 10) / 10);
+        updateVolumeUI();
+      }
+    });
+
+    function updateVolumeUI() {
+      const percent = Math.round(globalVolume * 100);
+      volumeDisplay.textContent = `${percent}%`;
+      if (currentMusic) {
+        currentMusic.volume = globalVolume;
+      }
+      announce(`Hangerő beállítva: ${percent} százalék.`);
+    }
+
+    function announce(msg) {
+      srAnnouncements.textContent = '';
+      setTimeout(() => {
+        srAnnouncements.textContent = msg;
+      }, 50);
+    }
+
+    function updatePlayersUI(players) {
+      currentPlayersData = players;
+      playerList.innerHTML = '';
+      const playerArray = Object.values(players);
+
+      playerArray.forEach(player => {
+        const li = document.createElement('li');
+        let statusText = player.isOnline ? '' : ' (Offline)';
+        if (player.isSpectator) statusText += ' (Néző)';
+        li.textContent = `${player.username}${statusText} - ${player.score} pont`;
+        playerList.appendChild(li);
+      });
+
+      if (playerArray.length >= 2) {
+        championshipControls.classList.remove('hidden');
+      } else {
+        championshipControls.classList.add('hidden');
+      }
+    }
+
+    function setGameLayoutMode(inGame) {
+      if (inGame) {
+        roomTitle.classList.add('hidden');
+        playersContainer.classList.add('hidden');
+        gameControls.classList.add('hidden');
+      } else {
+        roomTitle.classList.remove('hidden');
+        playersContainer.classList.remove('hidden');
+        if (!isChampionshipMode) {
+          gameControls.classList.remove('hidden');
+        }
+      }
+    }
+
+    function confirmAndLeaveRoom() {
+      const confirmed = confirm('Biztosan ki szeretnél lépni a szobából? A gyűjtött pontjaid elvesznek.');
+      if (confirmed) {
+        stopCurrentMusic();
+        socket.emit('leaveRoomIntentional');
+      }
+    }
+
+    leaveRoomBtn.addEventListener('click', confirmAndLeaveRoom);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.altKey) {
+        const key = e.key.toLowerCase();
+        
+        if (key === 'q') {
+          e.preventDefault();
+          if (!roomSection.classList.contains('hidden')) {
+            confirmAndLeaveRoom();
+          }
+        }
+
+        if (key === 's') {
+          e.preventDefault();
+          if (!guessForm.classList.contains('hidden') && currentScrambledText) {
+            const spelled = currentScrambledText.split('').join(' ');
+            announce(`Aktuális feladvány. Kategória: ${currentCategoryText}. Betűk: ${spelled}.`);
+          } else {
+            announce('Jelenleg nincs folyamatban lévő feladvány.');
+          }
+        }
+
+        if (key === 'p') {
+          e.preventDefault();
+          const players = Object.values(currentPlayersData);
+          if (players.length === 0) {
+            announce('Nincsenek csatlakozott játékosok.');
+          } else {
+            const scoreString = players.map(p => `${p.username}: ${p.score} pont`).join(', ');
+            announce(`Jelenlegi pontállás: ${scoreString}.`);
+          }
+        }
+      }
+    });
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      const room = roomInput.value.trim() || 'szoszatyor';
+      if (username) {
+        socket.emit('joinRoom', { username, room });
+      }
+    });
+
+    joinPublicBtn.addEventListener('click', () => {
+      const username = usernameInput.value.trim();
+      if (!username) {
+        alert('Kérlek, add meg a nevedet a belépéshez!');
+        usernameInput.focus();
+        return;
+      }
+      socket.emit('joinRoom', { username, room: 'szoszatyor' });
+    });
+
+    socket.on('joinedSuccessfully', ({ room, username, isReconnect, gameActive, isChampionship, isSpectator }) => {
+      loginSection.classList.add('hidden');
+      mainHeader.classList.add('hidden');
+      roomSection.classList.remove('hidden');
+      roomTitle.textContent = `Szoba: ${room}`;
+      announce(`Sikeresen beléptél a ${room} szobába!`);
+
+      isChampionshipMode = isChampionship;
+
+      if (!isReconnect) {
+        playSound('sounds/szoszatyorstart.mp3');
+      }
+
+      if (isChampionshipMode) {
+        gameControls.classList.add('hidden');
+      }
+
+      if (isSpectator) {
+        announce('Figyelem: A szobában épp bajnokság zajlik, ezért nézőként csatlakoztál!');
+      }
+    });
+
+    socket.on('leftSuccessfully', () => {
+      roomSection.classList.add('hidden');
+      loginSection.classList.remove('hidden');
+      mainHeader.classList.remove('hidden');
+      isChampionshipMode = false;
+      gameControls.classList.remove('hidden');
+      setGameLayoutMode(false);
+      announce('Sikeresen kiléptél a szobából.');
+    });
+
+    socket.on('updatePlayerList', (players) => {
+      updatePlayersUI(players);
+    });
+
+    socket.on('playerDisconnectedUnexpectedly', ({ username }) => {
+      announce(`${username} kapcsolata megszakadt.`);
+    });
+
+    socket.on('playerReconnected', ({ username }) => {
+      announce(`${username} visszacsatlakozott a szobába.`);
+    });
+
+    socket.on('playerLeftIntentional', ({ username }) => {
+      announce(`${username} kilépett a játékból.`);
+    });
+
+    socket.on('chatMessage', ({ sender, text }) => {
+      const p = document.createElement('p');
+      p.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      chatBox.appendChild(p);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    startGameBtn.addEventListener('click', () => {
+      socket.emit('startGame');
+    });
+
+    champBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = parseInt(btn.getAttribute('data-target'));
+        const confirmed = confirm(`Biztosan elindítod a ${target} pontos bajnokságot? A játékosok pontjai lenullázódnak!`);
+        if (confirmed) {
+          socket.emit('startChampionship', target);
+        }
+      });
+    });
+
+    socket.on('championshipStarted', ({ target }) => {
+      isChampionshipMode = true;
+      gameControls.classList.add('hidden');
+      announce(`Elindult a ${target} pontos bajnokság! Minden játékos pontja lenullázódott.`);
+    });
+
+    // ÚJ KÖR INDULÁSA (A szerver által kijelölt zenével!)
+    socket.on('newRound', ({ scrambledWord, category, length, isChampionship, musicIndex }) => {
+      stopCurrentMusic();
+      isChampionshipMode = isChampionship;
+      setGameLayoutMode(true);
+
+      currentCategoryText = category;
+      currentScrambledText = scrambledWord;
+
+      // Pontosan azt a zenét játsszuk le, amit a szerver elküldött!
+      const trackPath = `sounds/szoszatyorzene${musicIndex}.mp3`;
+      currentMusic = playSound(trackPath, true);
+
+      categoryDisplay.textContent = `Kategória: ${category}`;
+      scrambledWordDisplay.textContent = scrambledWord;
+      guessForm.classList.remove('hidden');
+      guessInput.value = '';
+      guessFeedback.textContent = '';
+      guessInput.focus();
+
+      announce(`Új kör indult! Kategória: ${category}. Az összekevert betűk: ${scrambledWord.split('').join(' ')}. A szó ${length} betűs.`);
+    });
+
+    socket.on('timerUpdate', (timeLeft) => {
+      timerDisplay.textContent = timeLeft;
+    });
+
+    guessForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const guess = guessInput.value.trim();
+      if (guess) {
+        socket.emit('submitGuess', guess);
+      }
+    });
+
+    socket.on('incorrectGuess', () => {
+      guessFeedback.textContent = 'Helytelen tipp!';
+      announce('Helytelen tipp!');
+
+      guessInput.value = '';
+      guessInput.focus();
+    });
+
+    socket.on('roundWon', ({ winner, word, points, players, isChampionship }) => {
+      stopCurrentMusic();
+      playSound('sounds/szoszatyornyert.mp3');
+      isChampionshipMode = isChampionship;
+      setGameLayoutMode(false);
+
+      guessForm.classList.add('hidden');
+      scrambledWordDisplay.textContent = `A helyes szó ez volt: ${word}`;
+      announce(`${winner} kitalálta a szót! A helyes szó ${word} volt. Kapott ${points} pontot.`);
+      
+      updatePlayersUI(players);
+    });
+
+    socket.on('roundTimeout', ({ isChampionship }) => {
+      stopCurrentMusic();
+      playSound('sounds/szoszatyorlejart.mp3');
+      isChampionshipMode = isChampionship;
+      setGameLayoutMode(false);
+
+      guessForm.classList.add('hidden');
+      scrambledWordDisplay.textContent = 'Lejárt az idő! Senki nem találta ki a szót.';
+      announce('Lejárt az idő! Senki nem találta ki a szót.');
+    });
+
+    socket.on('autoNextRoundCounting', (seconds) => {
+      announce(`A következő feladvány ${seconds} másodperc múlva automatikusan indul.`);
+    });
+
+    socket.on('championshipWon', ({ winner, word, points, players, target }) => {
+      stopCurrentMusic();
+      playSound('sounds/szoszatyorbajnok.mp3');
+      isChampionshipMode = false;
+      setGameLayoutMode(false);
+
+      guessForm.classList.add('hidden');
+      scrambledWordDisplay.textContent = `A helyes szó ez volt: ${word}`;
+      
+      const victoryMsg = `🥂 Gratulálunk a bajnoknak! ${winner} a ${target} pontos bajnokság győztese!`;
+      announce(victoryMsg);
+
+      updatePlayersUI(players);
+
+      gameControls.classList.add('hidden');
+
+      setTimeout(() => {
+        gameControls.classList.remove('hidden');
+        announce('Új játék vagy bajnokság indítása mostantól elérhető.');
+      }, 20000);
+    });
+
+    socket.on('championshipEndedNoWinner', () => {
+      stopCurrentMusic();
+      isChampionshipMode = false;
+      setGameLayoutMode(false);
+      gameControls.classList.remove('hidden');
+      guessForm.classList.add('hidden');
+      
+      const msg = 'A 200. feladvány után a bajnokság nyertes nélkül ért véget!';
+      announce(msg);
+    });
+
+    socket.on('errorMsg', (msg) => {
+      alert(msg);
+      announce(msg);
+    });
+  </script>
+</body>
+</html>
