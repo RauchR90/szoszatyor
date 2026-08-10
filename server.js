@@ -50,7 +50,8 @@ io.on('connection', (socket) => {
         autoTimer: null,
         isChampionship: false,
         championshipTarget: 0,
-        wordsPlayedInChamp: 0
+        wordsPlayedInChamp: 0,
+        currentMusicIndex: 1
       };
     }
 
@@ -106,13 +107,20 @@ io.on('connection', (socket) => {
       };
     }
 
+    // Elküldjük az épp futó kör adatait is, ha van aktív feladvány!
     socket.emit('joinedSuccessfully', { 
       room: cleanRoom, 
       username: cleanUsername,
       isReconnect: isReconnect,
       gameActive: currentRoom.gameActive,
       isChampionship: currentRoom.isChampionship,
-      isSpectator: currentRoom.players[socket.id].isSpectator
+      isSpectator: currentRoom.players[socket.id].isSpectator,
+      activeRoundData: currentRoom.gameActive ? {
+        scrambledWord: currentRoom.scrambledWord,
+        category: currentRoom.currentWordObj ? currentRoom.currentWordObj.category : '',
+        length: currentRoom.currentWordObj ? currentRoom.currentWordObj.word.length : 0,
+        musicIndex: currentRoom.currentMusicIndex
+      } : null
     });
 
     io.to(cleanRoom).emit('updatePlayerList', currentRoom.players);
@@ -273,15 +281,14 @@ function startNewRound(roomName) {
   room.scrambledWord = scrambleWord(randomItem.word);
   room.gameActive = true;
 
-  // A szerver választ egy zeneszámot (1, 2, 3 vagy 4) mindenkinek!
-  const musicIndex = Math.floor(Math.random() * 4) + 1;
+  room.currentMusicIndex = Math.floor(Math.random() * 4) + 1;
 
   io.to(roomName).emit('newRound', {
     scrambledWord: room.scrambledWord,
     category: randomItem.category,
     length: randomItem.word.length,
     isChampionship: room.isChampionship,
-    musicIndex: musicIndex // Elküldjük a zene számát mindenkinek!
+    musicIndex: room.currentMusicIndex
   });
 
   let timeLeft = 120;

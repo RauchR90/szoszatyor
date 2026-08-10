@@ -781,7 +781,7 @@
   { "word": "SZOBRÁSZ", "category": "foglalkozás/szakma" },
   { "word": "TÁNCMŰVÉSZ", "category": "foglalkozás/szakma" },
   { "word": "TAKARÍTÓ", "category": "foglalkozás/szakma" },
-  { "word": "TAXIS, "category": "foglalkozás/szakma" },
+{ "word": "TAXIS", "category": "foglalkozás/szakma" },
   { "word": "TECHNIKUS", "category": "foglalkozás/szakma" },
   { "word": "TERVEZŐ", "category": "foglalkozás/szakma" },
   { "word": "TŰZOLTÓ", "category": "foglalkozás/szakma" },
@@ -1057,5 +1057,5 @@
   { "word": "ÖLYV", "category": "állat" },
   { "word": "KESELYŰ", "category": "állat" },
   { "word": "SIRÁLY", "category": "állat" },
-  { "word": "CSÉR", "category": "állat" },
+  { "word": "CSÉR", "category": "állat" }
 ]

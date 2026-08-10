@@ -313,7 +313,7 @@
       socket.emit('joinRoom', { username, room: 'szoszatyor' });
     });
 
-    socket.on('joinedSuccessfully', ({ room, username, isReconnect, gameActive, isChampionship, isSpectator }) => {
+    socket.on('joinedSuccessfully', ({ room, username, isReconnect, gameActive, isChampionship, isSpectator, activeRoundData }) => {
       loginSection.classList.add('hidden');
       mainHeader.classList.add('hidden');
       roomSection.classList.remove('hidden');
@@ -324,6 +324,31 @@
 
       if (!isReconnect) {
         playSound('sounds/szoszatyorstart.mp3');
+      }
+
+      // HA ÉPP AKTÍV FELADVÁNY VAN ÉS NEM NÉZŐ -> Helyreállítjuk a tippelő felületet a visszatérőnek!
+      if (gameActive && !isSpectator && activeRoundData) {
+        setGameLayoutMode(true);
+        currentCategoryText = activeRoundData.category;
+        currentScrambledText = activeRoundData.scrambledWord;
+
+        categoryDisplay.textContent = `Kategória: ${activeRoundData.category}`;
+        scrambledWordDisplay.textContent = activeRoundData.scrambledWord;
+        guessForm.classList.remove('hidden');
+        guessInput.value = '';
+        guessFeedback.textContent = '';
+        guessInput.focus();
+
+        const trackPath = `sounds/szoszatyorzene${activeRoundData.musicIndex}.mp3`;
+        currentMusic = playSound(trackPath, true);
+
+        announce(`A feladvány jelenleg is tart! Kategória: ${activeRoundData.category}. Az összekevert betűk: ${activeRoundData.scrambledWord.split('').join(' ')}.`);
+      } else {
+        if (gameActive) {
+          startGameBtn.disabled = true;
+        } else {
+          startGameBtn.disabled = false;
+        }
       }
 
       if (isChampionshipMode) {
@@ -388,7 +413,6 @@
       announce(`Elindult a ${target} pontos bajnokság! Minden játékos pontja lenullázódott.`);
     });
 
-    // ÚJ KÖR INDULÁSA (A szerver által kijelölt zenével!)
     socket.on('newRound', ({ scrambledWord, category, length, isChampionship, musicIndex }) => {
       stopCurrentMusic();
       isChampionshipMode = isChampionship;
@@ -397,7 +421,6 @@
       currentCategoryText = category;
       currentScrambledText = scrambledWord;
 
-      // Pontosan azt a zenét játsszuk le, amit a szerver elküldött!
       const trackPath = `sounds/szoszatyorzene${musicIndex}.mp3`;
       currentMusic = playSound(trackPath, true);
 
