@@ -65,7 +65,7 @@
 
     </section>
 
-    <!-- 2. JÁTÉKSZOBA TERÜLET -->
+    <!-- 2. JÁTÉKSZOBA TERÜLET (SZIGORÚAN KÜLÖN FORMOKKAL!) -->
     <section id="room-section" class="hidden">
       <h2 id="room-title">Szoba</h2>
 
@@ -113,6 +113,7 @@
 
       <hr style="margin: 30px 0;">
 
+      <!-- SZOBA CSEVEGŐ (SZIGORÚAN KÜLÖN FORM!) -->
       <h3>Szoba csevegő</h3>
       <div id="chat-box" role="log" aria-live="polite" aria-relevant="additions"></div>
 
@@ -326,7 +327,6 @@
         playSound('sounds/szoszatyorstart.mp3');
       }
 
-      // HA ÉPP AKTÍV FELADVÁNY VAN ÉS NEM NÉZŐ -> Helyreállítjuk a tippelő felületet a visszatérőnek!
       if (gameActive && !isSpectator && activeRoundData) {
         setGameLayoutMode(true);
         currentCategoryText = activeRoundData.category;
@@ -382,8 +382,23 @@
       announce(`${username} visszacsatlakozott a szobába.`);
     });
 
+    socket.on('playerRemovedAfterTimeout', ({ username }) => {
+      announce(`${username} 5 perc elteltével törölve lett a szobából.`);
+    });
+
     socket.on('playerLeftIntentional', ({ username }) => {
       announce(`${username} kilépett a játékból.`);
+    });
+
+    // CHAT ÜZENET KÜLDÉSE (A csevegő saját formján!)
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const msg = chatInput.value.trim();
+      if (msg) {
+        socket.emit('sendChatMessage', msg);
+        chatInput.value = '';
+        chatInput.focus();
+      }
     });
 
     socket.on('chatMessage', ({ sender, text }) => {

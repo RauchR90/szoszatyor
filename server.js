@@ -83,13 +83,20 @@ io.on('connection', (socket) => {
       isReconnect = true;
       const savedScore = currentRoom.players[existingPlayerKey].score;
       const savedSpectator = currentRoom.players[existingPlayerKey].isSpectator || false;
+      
+      // HA VISSZAÉRKEZIK: Töröljük az 5 perces törlési időzítőt!
+      if (currentRoom.players[existingPlayerKey].disconnectTimer) {
+        clearTimeout(currentRoom.players[existingPlayerKey].disconnectTimer);
+      }
+
       delete currentRoom.players[existingPlayerKey];
 
       currentRoom.players[socket.id] = {
         username: cleanUsername,
         score: savedScore,
         isOnline: true,
-        isSpectator: savedSpectator
+        isSpectator: savedSpectator,
+        disconnectTimer: null
       };
 
       io.to(cleanRoom).emit('playerReconnected', { username: cleanUsername });
@@ -103,11 +110,11 @@ io.on('connection', (socket) => {
         username: cleanUsername,
         score: 0,
         isOnline: true,
-        isSpectator: isSpectator
+        isSpectator: isSpectator,
+        disconnectTimer: null
       };
     }
 
-    // Elküldjük az épp futó kör adatait is, ha van aktív feladvány!
     socket.emit('joinedSuccessfully', { 
       room: cleanRoom, 
       username: cleanUsername,
@@ -130,6 +137,11 @@ io.on('connection', (socket) => {
     const roomName = socket.roomName;
     if (roomName && rooms[roomName]) {
       const username = socket.username;
+      
+      if (rooms[roomName].players[socket.id] && rooms[roomName].players[socket.id].disconnectTimer) {
+        clearTimeout(rooms[roomName].players[socket.id].disconnectTimer);
+      }
+
       delete rooms[roomName].players[socket.id];
 
       socket.leave(roomName);
@@ -248,6 +260,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // SZÉTKAPCSOLÓDÁS KEZELÉSE 5 PERCES (300 MP) TÜRELMI IDŐVEL
   socket.on('disconnect', () => {
     const roomName = socket.roomName;
     if (roomName && rooms[roomName] && rooms[roomName].players[socket.id]) {
@@ -257,6 +270,22 @@ io.on('connection', (socket) => {
 
       io.to(roomName).emit('updatePlayerList', rooms[roomName].players);
       io.to(roomName).emit('playerDisconnectedUnexpectedly', { username });
+
+      // 5 PERCES (300 000 ms) IDŐZÍTŐ INDÍTÁSA A VÉGLEGES TÖRLÉSHEZ
+      rooms[roomName].players[socket.id].disconnectTimer = setTimeout(() => {
+        if (rooms[roomName] && rooms[roomName].players[socket.id]) {
+          delete rooms[roomName].players[socket.id];
+          
+          if (Object.keys(rooms[roomName].players).length === 0) {
+            clearInterval(rooms[roomName].timer);
+            clearTimeout(rooms[roomName].autoTimer);
+            delete rooms[roomName];
+          } else {
+            io.to(roomName).emit('updatePlayerList', rooms[roomName].players);
+            io.to(roomName).emit('playerRemovedAfterTimeout', { username });
+          }
+        }
+      }, 300000); // 5 perc
     }
   });
 });
