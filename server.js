@@ -84,7 +84,6 @@ io.on('connection', (socket) => {
       const savedScore = currentRoom.players[existingPlayerKey].score;
       const savedSpectator = currentRoom.players[existingPlayerKey].isSpectator || false;
       
-      // HA VISSZAÉRKEZIK: Töröljük az 5 perces törlési időzítőt!
       if (currentRoom.players[existingPlayerKey].disconnectTimer) {
         clearTimeout(currentRoom.players[existingPlayerKey].disconnectTimer);
       }
@@ -260,7 +259,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // SZÉTKAPCSOLÓDÁS KEZELÉSE 5 PERCES (300 MP) TÜRELMI IDŐVEL
   socket.on('disconnect', () => {
     const roomName = socket.roomName;
     if (roomName && rooms[roomName] && rooms[roomName].players[socket.id]) {
@@ -271,7 +269,6 @@ io.on('connection', (socket) => {
       io.to(roomName).emit('updatePlayerList', rooms[roomName].players);
       io.to(roomName).emit('playerDisconnectedUnexpectedly', { username });
 
-      // 5 PERCES (300 000 ms) IDŐZÍTŐ INDÍTÁSA A VÉGLEGES TÖRLÉSHEZ
       rooms[roomName].players[socket.id].disconnectTimer = setTimeout(() => {
         if (rooms[roomName] && rooms[roomName].players[socket.id]) {
           delete rooms[roomName].players[socket.id];
@@ -358,5 +355,5 @@ function scheduleNextRound(roomName, seconds) {
 
 const PORT = process.env.PORT || 2500;
 server.listen(PORT, () => {
-  console.log(`Szószatyor szerver elindult a ${PORT}-es porton!`);
+  console.log(`Szószatyor 0.3Beta szerver elindult a ${PORT}-es porton!`);
 });

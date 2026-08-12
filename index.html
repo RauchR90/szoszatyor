@@ -10,7 +10,7 @@
     #chat-box { border: 1px solid #ccc; height: 150px; overflow-y: auto; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
     .status-panel { background: #eef6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #b6d4fe; }
     .category-tag { font-size: 1.1rem; font-weight: bold; color: #555; text-transform: uppercase; margin-bottom: 5px; }
-    .scrambled-word { font-size: 2rem; letter-spacing: 5px; font-weight: bold; color: #0d6efd; margin: 10px 0; }
+    .scrambled-word { font-size: 2rem; letter-spacing: 5px; font-weight: bold; color: #0d6efd; margin: 0; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
     .alert-msg { font-weight: bold; color: #d9534f; margin-top: 10px; }
     .volume-control { margin: 15px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
@@ -24,10 +24,10 @@
 </head>
 <body>
 
-  <!-- INDÍTÓKÉPERNYŐ FEJLÉC -->
+  <!-- INDÍTÓKÉPERNYŐ FEJLÉC (Verzió frissítve: 0.3Beta) -->
   <header id="main-header">
     <p><strong>szószatyor</strong></p>
-    <h1>Verzió: 0.2Beta</h1>
+    <h1>Verzió: 0.3Beta</h1>
   </header>
 
   <main>
@@ -65,7 +65,7 @@
 
     </section>
 
-    <!-- 2. JÁTÉKSZOBA TERÜLET (SZIGORÚAN KÜLÖN FORMOKKAL!) -->
+    <!-- 2. JÁTÉKSZOBA TERÜLET -->
     <section id="room-section" class="hidden">
       <h2 id="room-title">Szoba</h2>
 
@@ -83,8 +83,15 @@
         <p>Időből hátravan: <strong id="timer-display">120</strong> másodperc</p>
         
         <div id="category-display" class="category-tag">Kategória: -</div>
+        
+        <!-- VALÓDI ÜRES SOR SZÓKÖZZEL FELÜL A KÉPERNYŐOLVASÓNAK -->
+        <div> <br></div>
+        
         <div id="scrambled-word-display" class="scrambled-word">Várakozás az indításra...</div>
         
+        <!-- VALÓDI ÜRES SOR SZÓKÖZZEL ALUL A KÉPERNYŐOLVASÓNAK -->
+        <div> <br></div>
+
         <form id="guess-form" class="hidden">
           <label for="guess-input">Tippeld meg a szót:</label><br>
           <input type="text" id="guess-input" autocomplete="off" required>
@@ -113,7 +120,6 @@
 
       <hr style="margin: 30px 0;">
 
-      <!-- SZOBA CSEVEGŐ (SZIGORÚAN KÜLÖN FORM!) -->
       <h3>Szoba csevegő</h3>
       <div id="chat-box" role="log" aria-live="polite" aria-relevant="additions"></div>
 
@@ -166,6 +172,7 @@
 
     let globalVolume = 1.0;
     let currentMusic = null;
+    let startSound = null;
     let currentPlayersData = {};
     let currentCategoryText = '';
     let currentScrambledText = '';
@@ -179,7 +186,16 @@
       return audio;
     }
 
+    function stopStartSound() {
+      if (startSound) {
+        startSound.pause();
+        startSound.currentTime = 0;
+        startSound = null;
+      }
+    }
+
     function stopCurrentMusic() {
+      stopStartSound();
       if (currentMusic) {
         currentMusic.pause();
         currentMusic.currentTime = 0;
@@ -204,8 +220,12 @@
     function updateVolumeUI() {
       const percent = Math.round(globalVolume * 100);
       volumeDisplay.textContent = `${percent}%`;
+      
       if (currentMusic) {
         currentMusic.volume = globalVolume;
+      }
+      if (startSound) {
+        startSound.volume = globalVolume;
       }
       announce(`Hangerő beállítva: ${percent} százalék.`);
     }
@@ -324,10 +344,11 @@
       isChampionshipMode = isChampionship;
 
       if (!isReconnect) {
-        playSound('sounds/szoszatyorstart.mp3');
+        startSound = playSound('sounds/szoszatyorstart.mp3');
       }
 
       if (gameActive && !isSpectator && activeRoundData) {
+        stopStartSound();
         setGameLayoutMode(true);
         currentCategoryText = activeRoundData.category;
         currentScrambledText = activeRoundData.scrambledWord;
@@ -390,7 +411,6 @@
       announce(`${username} kilépett a játékból.`);
     });
 
-    // CHAT ÜZENET KÜLDÉSE (A csevegő saját formján!)
     chatForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const msg = chatInput.value.trim();
@@ -476,7 +496,7 @@
       setGameLayoutMode(false);
 
       guessForm.classList.add('hidden');
-      scrambledWordDisplay.textContent = `A helyes szó ez volt: ${word}`;
+      scrambledWordDisplay.textContent = `${winner} kitalálta! A helyes szó ez volt: ${word}`;
       announce(`${winner} kitalálta a szót! A helyes szó ${word} volt. Kapott ${points} pontot.`);
       
       updatePlayersUI(players);
@@ -504,7 +524,7 @@
       setGameLayoutMode(false);
 
       guessForm.classList.add('hidden');
-      scrambledWordDisplay.textContent = `A helyes szó ez volt: ${word}`;
+      scrambledWordDisplay.textContent = `${winner} kitalálta! A helyes szó ez volt: ${word}`;
       
       const victoryMsg = `🥂 Gratulálunk a bajnoknak! ${winner} a ${target} pontos bajnokság győztese!`;
       announce(victoryMsg);
